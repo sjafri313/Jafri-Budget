@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Household Budget</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💵</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f5f4; --paper:#ffffff; --ink:#18201d; --muted:#5f6b66; --line:#dde3e0;
+  --accent:#235347; --accent-ink:#ffffff; --soft:#e7efec;
+  --pos:#1d6b3f; --neg:#b3261e; --bar:#8fb3a6;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121614; --paper:#1a201d; --ink:#e6ece9; --muted:#97a39e; --line:#2c3531;
+    --accent:#7fc3ac; --accent-ink:#0f1a16; --soft:#22302b;
+    --pos:#6fd39a; --neg:#ff8a80; --bar:#4d7a6c;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);
+  border-radius:8px;padding:9px 14px;font-weight:600}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button.sm{padding:5px 10px;font-size:13px}
+button.icon{background:transparent;border:0;color:var(--muted);padding:4px 8px;font-weight:500}
+button.icon:hover{color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:9px 10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:500}
+h1{font-size:20px;margin:0;letter-spacing:-.01em}
+h3{font-size:15px;margin:0 0 12px}
+
+/* Header */
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.pill{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--accent);margin-left:8px;vertical-align:middle}
+.who{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+
+/* Period switcher */
+.period{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);
+  border-radius:var(--radius);padding:8px;margin-bottom:14px}
+.period #periodLabel{flex:1;text-align:center;font-weight:600}
+.period small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+.tabs button{background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;
+  color:var(--muted);padding:10px 14px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* Summary: the left-over figure is the anchor */
+.summary{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.summary > div{background:var(--paper);padding:14px 16px}
+.summary .lbl{font-size:13px;color:var(--muted)}
+.summary .val{font-size:20px;font-weight:600}
+.summary .lead .val{font-size:34px;font-weight:700;letter-spacing:-.02em}
+.summary.four{grid-template-columns:1.4fr 1fr 1fr 1fr}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+
+.box{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cols > .box{margin-bottom:0}
+.cols{margin-bottom:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row input{flex:1;min-width:120px}
+.grid{display:grid;grid-template-columns:150px 1fr;gap:10px}
+.grid .wide{grid-column:1 / -1}
+.actions{grid-column:1 / -1;display:flex;gap:8px}
+.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+
+/* Tables */
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:13px;border-bottom:1px solid var(--line);padding:8px 6px}
+td{border-bottom:1px solid var(--line);padding:8px 6px;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+td.num{white-space:nowrap}
+tfoot td{font-weight:700;border-top:1px solid var(--ink);border-bottom:0}
+.cat{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--soft);white-space:nowrap}
+.empty{color:var(--muted);text-align:center;padding:18px 6px}
+.barcell{width:30%}
+.bar{height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+.bar > i{display:block;height:100%;background:var(--bar)}
+tr.editing td{background:var(--soft)}
+
+/* Status + login */
+#status{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;opacity:0;
+  transition:opacity .2s;pointer-events:none;max-width:90vw}
+#status.show{opacity:1}
+#status.error{background:var(--neg);color:#fff}
+.overlay{min-height:100vh;display:grid;place-items:center;padding:16px}
+.login{width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
+.err{color:var(--neg);font-size:13px;min-height:1em;margin:0}
+[hidden]{display:none !important}
+
+@media (max-width:720px){
+  .summary,.summary.four{grid-template-columns:1fr 1fr}
+  .summary .lead{grid-column:1 / -1}
+  .cols{grid-template-columns:1fr}
+  .grid{grid-template-columns:1fr 1fr}
+  .hide-sm{display:none}
+  .period{flex-wrap:wrap}
+  .period #periodLabel{order:-1;flex-basis:100%;margin-bottom:4px}
+  .period button{flex:1}
+}
+@media (prefers-reduced-motion:reduce){#status{transition:none}}
+</style>
+<script>
+// ─────────────────────────────────────────────────────────────
+//  Household Budget — configuration
+//  Fill in ONE backend: Supabase (preferred) or Firebase.
+//  If both are empty, the app runs in local-only mode (no sharing).
+// ─────────────────────────────────────────────────────────────
+window.APP_CONFIG = {
+  supabase: {
+    url: "https://fdnrzlwnxhnsaswoowck.supabase.co",
+    anonKey: "sb_publishable_xmOWaVvOgDfC-LNVhBGjJA_H_vsbY21"
+  },
+
+  firebase: {
+    apiKey: "", authDomain: "", projectId: "",
+    storageBucket: "", messagingSenderId: "", appId: ""
+  },
+
+  householdId: "jafri-zaidi",
+
+  users: {
+    imroze:  { name: "Imroze Jafri",  email: "syedijafri313@gmail.com" },
+    nooriah: { name: "Nooriah Zaidi", email: "786nooriah@gmail.com" }
+  },
+
+  categories: ["Utilities", "Credit Card", "Food", "Gas", "Education", "Investments", "Miscellaneous"],
+
+  currency: "USD"
+};
+
+</script>
+</head>
+<body>
+
+<div id="login" class="overlay" hidden>
+  <form id="loginForm" class="box login">
+    <h1>Household Budget</h1>
+    <label>Email<input type="email" name="email" required autocomplete="username"></label>
+    <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+    <button type="submit">Sign in</button>
+    <p id="loginErr" class="err"></p>
+  </form>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <header>
+    <h1>Household Budget <span id="mode" class="pill"></span></h1>
+    <div class="who"><span id="whoami"></span><button id="signout" class="ghost sm" hidden>Sign out</button></div>
+  </header>
+
+  <div class="period">
+    <button id="prev" class="ghost sm" aria-label="Previous pay period">‹ Prev</button>
+    <div id="periodLabel"></div>
+    <button id="next" class="ghost sm" aria-label="Next pay period">Next ›</button>
+    <button id="current" class="ghost sm">Current</button>
+  </div>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <main id="main"></main>
+</div>
+
+<div id="status" role="status" aria-live="polite"></div>
+
+<script type="module">
+/* ============================================================
+   Configuration
+   ============================================================ */
+const CFG = window.APP_CONFIG || {};
+const USERS = CFG.users;
+const USER_KEYS = Object.keys(USERS);
+const CATEGORIES = CFG.categories;
+const HOUSEHOLD_ID = CFG.householdId || "household";
+const FB_VERSION = "10.12.2";
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+const $ = (s, el = document) => el.querySelector(s);
+const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: CFG.currency || "USD" });
+const money = c => fmt.format((c || 0) / 100);
+const toCents = v => { const n = parseFloat(String(v).replace(/[^0-9.]/g, "")); return Number.isFinite(n) ? Math.round(n * 100) : NaN; };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const sum = list => list.reduce((a, e) => a + (e.amount || 0), 0);
+const first = k => USERS[k].name.split(" ")[0];
+const pad = n => String(n).padStart(2, "0");
+const shortDate = iso => { if (!iso) return ""; const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+
+let statusTimer;
+function status(msg, isError = false) {
+  const el = $("#status");
+  el.textContent = msg;
+  el.className = "show" + (isError ? " error" : "");
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => (el.className = ""), isError ? 5000 : 1800);
+}
+
+/* ============================================================
+   Pay periods (semi-monthly: 1st–15th = A, 16th–end = B)
+   ============================================================ */
+const periodOf = d => ({ y: d.getFullYear(), m: d.getMonth() + 1, half: d.getDate() <= 15 ? "A" : "B" });
+const periodId = p => `${p.y}-${pad(p.m)}-${p.half}`;
+const lastDay = p => new Date(p.y, p.m, 0).getDate();
+const range = p => p.half === "A" ? [1, 15] : [16, lastDay(p)];
+function shift(p, dir) {
+  if (dir > 0) {
+    if (p.half === "A") return { ...p, half: "B" };
+    const d = new Date(p.y, p.m, 1); return { y: d.getFullYear(), m: d.getMonth() + 1, half: "A" };
+  }
+  if (p.half === "B") return { ...p, half: "A" };
+  const d = new Date(p.y, p.m - 2, 1); return { y: d.getFullYear(), m: d.getMonth() + 1, half: "B" };
+}
+function periodLabel(p) {
+  const [s, e] = range(p);
+  const mon = new Date(p.y, p.m - 1, 1).toLocaleString("en-US", { month: "long" });
+  return `${mon} ${s}–${e}, ${p.y}<small>${p.half === "A" ? "1st" : "2nd"} pay period of the month</small>`;
+}
+function defaultDate(p) {
+  const t = new Date(), [s, e] = range(p);
+  if (t.getFullYear() === p.y && t.getMonth() + 1 === p.m && t.getDate() >= s && t.getDate() <= e)
+    return `${p.y}-${pad(p.m)}-${pad(t.getDate())}`;
+  return `${p.y}-${pad(p.m)}-${pad(s)}`;
+}
+
+/* ============================================================
+   Data
+   ============================================================ */
+const emptyPeriod = () => Object.fromEntries(USER_KEYS.map(k => [k, { income: 0, expenses: [] }]));
+function normalize(raw) {
+  const out = emptyPeriod();
+  for (const k of USER_KEYS) {
+    const u = raw?.[k];
+    if (u) out[k] = { income: Number(u.income) || 0, expenses: Array.isArray(u.expenses) ? u.expenses : [] };
+  }
+  return out;
+}
+
+/* ============================================================
+   Storage: Firebase (shared) or localStorage (fallback)
+   ============================================================ */
+async function createStore() {
+  if (CFG.supabase?.url && CFG.supabase?.anonKey) return supabaseStore();
+  if (CFG.firebase?.apiKey) return firebaseStore();
+  return localStore();
+}
+
+/* ---- Supabase: one row per person per pay period ---- */
+async function supabaseStore() {
+  const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+  const sb = createClient(CFG.supabase.url, CFG.supabase.anonKey);
+  const T = "budget_entries";
+  const fetchPeriod = async id => {
+    const { data, error } = await sb.from(T).select("user_key,data")
+      .eq("household_id", HOUSEHOLD_ID).eq("period_id", id);
+    if (error) throw error;
+    return Object.fromEntries(data.map(r => [r.user_key, r.data]));
+  };
+  return {
+    mode: "cloud",
+    onAuth: cb => {
+      let last; // only notify when the signed-in user actually changes
+      const { data: { subscription } } = sb.auth.onAuthStateChange((_e, session) => {
+        const u = session?.user || null, id = u?.id || null;
+        if (id === last) return;
+        last = id;
+        setTimeout(() => cb(u), 0);
+      });
+      return () => subscription.unsubscribe();
+    },
+    signIn: async (email, password) => {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    },
+    signOut: () => sb.auth.signOut(),
+    subscribe: (id, cb, onErr) => {
+      let alive = true;
+      const load = () => fetchPeriod(id).then(d => alive && cb(d)).catch(err => onErr?.(err));
+      load();
+      const ch = sb.channel(`period-${id}-${uid()}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: T, filter: `period_id=eq.${id}` }, load)
+        .subscribe();
+      return () => { alive = false; sb.removeChannel(ch); };
+    },
+    get: fetchPeriod,
+    saveUser: async (id, key, val) => {
+      const { error } = await sb.from(T).upsert(
+        { household_id: HOUSEHOLD_ID, period_id: id, user_key: key, data: val, updated_at: new Date().toISOString() },
+        { onConflict: "household_id,period_id,user_key" });
+      if (error) throw error;
+    }
+  };
+}
+
+/* ---- Firebase ---- */
+async function firebaseStore() {
+  const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}`;
+  const [appM, authM, fsM] = await Promise.all([
+    import(`${base}/firebase-app.js`), import(`${base}/firebase-auth.js`), import(`${base}/firebase-firestore.js`)
+  ]);
+  const app = appM.initializeApp(CFG.firebase);
+  const auth = authM.getAuth(app);
+  const db = fsM.getFirestore(app);
+  const ref = id => fsM.doc(db, "households", HOUSEHOLD_ID, "periods", id);
+  return {
+    mode: "cloud",
+    onAuth: cb => authM.onAuthStateChanged(auth, cb),
+    signIn: (e, p) => authM.signInWithEmailAndPassword(auth, e, p),
+    signOut: () => authM.signOut(auth),
+    subscribe: (id, cb, onErr) => fsM.onSnapshot(ref(id), s => cb(s.exists() ? s.data() : {}), onErr),
+    get: async id => { const s = await fsM.getDoc(ref(id)); return s.exists() ? s.data() : {}; },
+    saveUser: (id, key, val) => fsM.setDoc(ref(id), { [key]: val, updatedAt: fsM.serverTimestamp() }, { merge: true })
+  };
+}
+function localStore() {
+  const K = id => `hb:${HOUSEHOLD_ID}:${id}`;
+  const subs = new Map();
+  const read = id => { try { return JSON.parse(localStorage.getItem(K(id))) || {}; } catch { return {}; } };
+  return {
+    mode: "local",
+    onAuth: cb => { cb({ email: "" }); return () => {}; },
+    signIn: async () => {}, signOut: async () => {},
+    subscribe: (id, cb) => { subs.set(id, cb); cb(read(id)); return () => subs.delete(id); },
+    get: async id => read(id),
+    saveUser: async (id, key, val) => {
+      const d = read(id); d[key] = val;
+      localStorage.setItem(K(id), JSON.stringify(d));
+      subs.get(id)?.(d);
+    }
+  };
+}
+
+/* ============================================================
+   State
+   ============================================================ */
+const state = { period: periodOf(new Date()), tab: USER_KEYS[0], data: emptyPeriod(), me: null, editing: null, unsub: null };
+const panels = {};
+
+/* ============================================================
+   UI construction (built once; dynamic parts re-render)
+   ============================================================ */
+function buildUI() {
+  const tabs = $("#tabs");
+  tabs.innerHTML = [...USER_KEYS.map(k => [k, USERS[k].name]), ["combined", "Combined"]]
+    .map(([k, label]) => `<button role="tab" data-tab="${k}" aria-selected="false">${esc(label)}</button>`).join("");
+  tabs.addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
+
+  const main = $("#main");
+  for (const k of USER_KEYS) { main.insertAdjacentHTML("beforeend", userPanelHTML(k)); panels[k] = $(`#panel-${k}`); wireUserPanel(k); }
+  main.insertAdjacentHTML("beforeend", combinedPanelHTML());
+  panels.combined = $("#panel-combined");
+  $("#export", panels.combined).addEventListener("click", exportCSV);
+
+  $("#prev").onclick = () => setPeriod(shift(state.period, -1));
+  $("#next").onclick = () => setPeriod(shift(state.period, 1));
+  $("#current").onclick = () => setPeriod(periodOf(new Date()));
+}
+
+function userPanelHTML(k) {
+  const opts = CATEGORIES.map(c => `<option>${esc(c)}</option>`).join("");
+  return `
+<section class="panel" id="panel-${k}" role="tabpanel" hidden>
+  <div class="summary">
+    <div class="lead"><div class="lbl">Left over</div><div class="val num" data-f="left"></div></div>
+    <div><div class="lbl">Income</div><div class="val num" data-f="income"></div></div>
+    <div><div class="lbl">Expenses</div><div class="val num" data-f="spent"></div></div>
+  </div>
+
+  <div class="cols">
+    <div class="box">
+      <h3>Income for this pay period</h3>
+      <form class="row" data-form="income">
+        <input name="income" inputmode="decimal" placeholder="0.00" aria-label="Income amount">
+        <button type="submit">Save income</button>
+      </form>
+      <button type="button" class="ghost sm" data-act="copy" style="margin-top:8px">Copy from previous period</button>
+    </div>
+
+    <div class="box">
+      <h3 data-f="formTitle">Add expense</h3>
+      <form class="grid" data-form="expense">
+        <label>Date<input type="date" name="date" required></label>
+        <label>Category<select name="category">${opts}</select></label>
+        <label class="wide">Description<input name="desc" maxlength="80" placeholder="e.g. Electric bill"></label>
+        <label class="wide">Amount<input name="amount" inputmode="decimal" placeholder="0.00" required></label>
+        <div class="actions">
+          <button type="submit" data-f="submit">Add expense</button>
+          <button type="button" class="ghost" data-act="cancel" hidden>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Expenses</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="r">Amount</th><th></th></tr></thead>
+      <tbody data-f="rows"></tbody>
+    </table></div>
+  </div>
+
+  <div class="box">
+    <h3>By category</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Category</th><th class="r">Amount</th><th class="r">Share</th><th class="barcell hide-sm"></th></tr></thead>
+      <tbody data-f="cats"></tbody>
+    </table></div>
+  </div>
+</section>`;
+}
+
+function combinedPanelHTML() {
+  const names = USER_KEYS.map(k => `<th class="r">${esc(first(k))}</th>`).join("");
+  return `
+<section class="panel" id="panel-combined" role="tabpanel" hidden>
+  <div class="summary four">
+    <div class="lead"><div class="lbl">Household left over</div><div class="val num" data-f="left"></div></div>
+    <div><div class="lbl">Combined income</div><div class="val num" data-f="income"></div></div>
+    <div><div class="lbl">Combined expenses</div><div class="val num" data-f="spent"></div></div>
+    <div><div class="lbl">Kept</div><div class="val num" data-f="rate"></div></div>
+  </div>
+
+  <div class="box">
+    <h3>By person</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Person</th><th class="r">Income</th><th class="r">Expenses</th><th class="r">Left over</th></tr></thead>
+      <tbody data-f="people"></tbody><tfoot data-f="peopleTotal"></tfoot>
+    </table></div>
+  </div>
+
+  <div class="box">
+    <h3>By category</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Category</th>${names}<th class="r">Total</th><th class="r">Share</th><th class="barcell hide-sm"></th></tr></thead>
+      <tbody data-f="cats"></tbody><tfoot data-f="catsTotal"></tfoot>
+    </table></div>
+  </div>
+
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0">All expenses</h3>
+      <button id="export" class="ghost sm">Export CSV</button>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Date</th><th>Person</th><th>Description</th><th>Category</th><th class="r">Amount</th></tr></thead>
+      <tbody data-f="all"></tbody>
+    </table></div>
+  </div>
+</section>`;
+}
+
+/* ============================================================
+   Events (per user panel)
+   ============================================================ */
+function wireUserPanel(k) {
+  const p = panels[k];
+  const fInc = $('[data-form="income"]', p);
+  const fExp = $('[data-form="expense"]', p);
+
+  fInc.addEventListener("submit", e => {
+    e.preventDefault();
+    const raw = fInc.income.value.trim();
+    const c = raw === "" ? 0 : toCents(raw);
+    if (!Number.isFinite(c) || c < 0) return status("Enter income as a number, e.g. 2500.00", true);
+    fInc.income.blur();
+    save(k, { ...state.data[k], income: c }, "Income saved");
+  });
+
+  $('[data-act="copy"]', p).addEventListener("click", async () => {
+    try {
+      const prev = normalize(await store.get(periodId(shift(state.period, -1))))[k].income;
+      if (!prev) return status("No income was saved in the previous period", true);
+      save(k, { ...state.data[k], income: prev }, `Income set to ${money(prev)}`);
+    } catch (err) { status("Couldn't load the previous period: " + err.message, true); }
+  });
+
+  fExp.addEventListener("submit", e => {
+    e.preventDefault();
+    const amount = toCents(fExp.amount.value);
+    if (!(amount > 0)) return status("Enter an amount greater than 0", true);
+    const u = state.data[k];
+    const editing = state.editing?.user === k ? state.editing.id : null;
+    const prior = editing ? u.expenses.find(x => x.id === editing) : null;
+    const item = {
+      id: editing || uid(),
+      date: fExp.date.value,
+      desc: fExp.desc.value.trim(),
+      category: fExp.category.value,
+      amount,
+      createdAt: prior?.createdAt || Date.now()
+    };
+    const expenses = editing ? u.expenses.map(x => (x.id === editing ? item : x)) : [...u.expenses, item];
+    save(k, { ...u, expenses }, editing ? "Expense updated" : "Expense added");
+    resetExpenseForm(k);
+    fExp.amount.focus();
+  });
+
+  $('[data-act="cancel"]', p).addEventListener("click", () => { resetExpenseForm(k); renderUser(k); });
+
+  $('[data-f="rows"]', p).addEventListener("click", e => {
+    const b = e.target.closest("button[data-id]"); if (!b) return;
+    const u = state.data[k], x = u.expenses.find(i => i.id === b.dataset.id); if (!x) return;
+    if (b.dataset.act === "del") {
+      if (!confirm(`Delete "${x.desc || x.category}" (${money(x.amount)})?`)) return;
+      if (state.editing?.id === x.id) resetExpenseForm(k);
+      save(k, { ...u, expenses: u.expenses.filter(i => i.id !== x.id) }, "Expense deleted");
+    } else {
+      state.editing = { user: k, id: x.id };
+      fExp.date.value = x.date; fExp.desc.value = x.desc; fExp.category.value = x.category;
+      fExp.amount.value = (x.amount / 100).toFixed(2);
+      $('[data-f="formTitle"]', p).textContent = "Edit expense";
+      $('[data-f="submit"]', p).textContent = "Save changes";
+      $('[data-act="cancel"]', p).hidden = false;
+      renderUser(k);
+      fExp.amount.focus();
+    }
+  });
+}
+
+function resetExpenseForm(k) {
+  const p = panels[k], f = $('[data-form="expense"]', p);
+  const keepCat = f.category.value;
+  f.reset();
+  f.category.value = keepCat;
+  f.date.value = defaultDate(state.period);
+  if (state.editing?.user === k) state.editing = null;
+  $('[data-f="formTitle"]', p).textContent = "Add expense";
+  $('[data-f="submit"]', p).textContent = "Add expense";
+  $('[data-act="cancel"]', p).hidden = true;
+}
+
+async function save(k, val, msg) {
+  const id = periodId(state.period);
+  state.data[k] = val;            // optimistic update
+  renderAll();
+  try { await store.saveUser(id, k, val); status(msg); }
+  catch (err) { status("Not saved: " + err.message, true); }
+}
+
+/* ============================================================
+   Rendering
+   ============================================================ */
+const setF = (p, f, html) => { $(`[data-f="${f}"]`, p).innerHTML = html; };
+const byDate = (a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0);
+const signed = c => `<span class="${c < 0 ? "neg" : "pos"}">${money(c)}</span>`;
+const pct = (n, d) => (d > 0 ? Math.round((n / d) * 100) : 0);
+const bar = (n, d) => `<td class="barcell hide-sm"><div class="bar"><i style="width:${pct(n, d)}%"></i></div></td>`;
+
+function renderUser(k) {
+  const p = panels[k], u = state.data[k];
+  const spent = sum(u.expenses), left = u.income - spent;
+  setF(p, "left", signed(left));
+  setF(p, "income", money(u.income));
+  setF(p, "spent", money(spent));
+
+  const inc = $('[name="income"]', p);
+  if (document.activeElement !== inc) inc.value = u.income ? (u.income / 100).toFixed(2) : "";
+
+  const rows = [...u.expenses].sort(byDate);
+  setF(p, "rows", rows.length ? rows.map(x => `
+    <tr class="${state.editing?.id === x.id ? "editing" : ""}">
+      <td class="num">${shortDate(x.date)}</td>
+      <td>${esc(x.desc) || '<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="cat">${esc(x.category)}</span></td>
+      <td class="r num">${money(x.amount)}</td>
+      <td class="r" style="white-space:nowrap">
+        <button class="icon" data-act="edit" data-id="${x.id}" aria-label="Edit">Edit</button>
+        <button class="icon" data-act="del" data-id="${x.id}" aria-label="Delete">Delete</button>
+      </td>
+    </tr>`).join("") : `<tr><td colspan="5" class="empty">No expenses yet for this pay period. Add one above.</td></tr>`);
+
+  const cats = CATEGORIES.map(c => [c, sum(u.expenses.filter(x => x.category === c))]).filter(([, v]) => v > 0);
+  setF(p, "cats", cats.length ? cats.map(([c, v]) => `
+    <tr><td>${esc(c)}</td><td class="r num">${money(v)}</td><td class="r num">${pct(v, spent)}%</td>${bar(v, spent)}</tr>`).join("")
+    : `<tr><td colspan="4" class="empty">Category totals appear once expenses are added.</td></tr>`);
+}
+
+function renderCombined() {
+  const p = panels.combined, D = state.data;
+  const people = USER_KEYS.map(k => { const s = sum(D[k].expenses); return { k, income: D[k].income, spent: s, left: D[k].income - s }; });
+  const income = people.reduce((a, x) => a + x.income, 0);
+  const spent = people.reduce((a, x) => a + x.spent, 0);
+  const left = income - spent;
+
+  setF(p, "left", signed(left));
+  setF(p, "income", money(income));
+  setF(p, "spent", money(spent));
+  setF(p, "rate", income > 0 ? `${pct(left, income)}%` : "—");
+
+  setF(p, "people", people.map(x => `
+    <tr><td>${esc(USERS[x.k].name)}</td><td class="r num">${money(x.income)}</td><td class="r num">${money(x.spent)}</td><td class="r num">${signed(x.left)}</td></tr>`).join(""));
+  setF(p, "peopleTotal", `<tr><td>Household</td><td class="r num">${money(income)}</td><td class="r num">${money(spent)}</td><td class="r num">${signed(left)}</td></tr>`);
+
+  const catRows = CATEGORIES.map(c => {
+    const per = USER_KEYS.map(k => sum(D[k].expenses.filter(x => x.category === c)));
+    return { c, per, total: per.reduce((a, b) => a + b, 0) };
+  });
+  setF(p, "cats", catRows.map(r => `
+    <tr><td>${esc(r.c)}</td>${r.per.map(v => `<td class="r num">${v ? money(v) : "—"}</td>`).join("")}
+    <td class="r num"><strong>${money(r.total)}</strong></td><td class="r num">${pct(r.total, spent)}%</td>${bar(r.total, spent)}</tr>`).join(""));
+  setF(p, "catsTotal", `<tr><td>Total</td>${people.map(x => `<td class="r num">${money(x.spent)}</td>`).join("")}<td class="r num">${money(spent)}</td><td class="r num">${spent ? "100%" : "—"}</td><td class="hide-sm"></td></tr>`);
+
+  const all = USER_KEYS.flatMap(k => D[k].expenses.map(x => ({ ...x, who: k }))).sort(byDate);
+  setF(p, "all", all.length ? all.map(x => `
+    <tr><td class="num">${shortDate(x.date)}</td><td>${esc(first(x.who))}</td><td>${esc(x.desc)}</td>
+    <td><span class="cat">${esc(x.category)}</span></td><td class="r num">${money(x.amount)}</td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">No expenses logged by either person this pay period.</td></tr>`);
+}
+
+function renderAll() { USER_KEYS.forEach(renderUser); renderCombined(); }
+
+function setTab(t) {
+  state.tab = t;
+  document.querySelectorAll("#tabs [data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+  Object.entries(panels).forEach(([k, el]) => (el.hidden = k !== t));
+}
+
+function setPeriod(p) {
+  state.period = p;
+  $("#periodLabel").innerHTML = periodLabel(p);
+  USER_KEYS.forEach(resetExpenseForm);
+  startSync();
+}
+
+function startSync() {
+  state.unsub?.();
+  state.data = emptyPeriod();
+  renderAll();
+  state.unsub = store.subscribe(
+    periodId(state.period),
+    raw => { state.data = normalize(raw); renderAll(); },
+    err => status("Sync error: " + err.message, true)
+  );
+}
+function stopSync() { state.unsub?.(); state.unsub = null; }
+
+function exportCSV() {
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const pid = periodId(state.period);
+  const lines = [["Pay period", "Person", "Type", "Date", "Description", "Category", "Amount"].map(q).join(",")];
+  for (const k of USER_KEYS) {
+    const u = state.data[k];
+    lines.push([pid, USERS[k].name, "Income", "", "", "", (u.income / 100).toFixed(2)].map(q).join(","));
+    [...u.expenses].sort(byDate).reverse().forEach(x =>
+      lines.push([pid, USERS[k].name, "Expense", x.date, x.desc, x.category, (x.amount / 100).toFixed(2)].map(q).join(",")));
+  }
+  const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: `budget-${pid}.csv` });
+  document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+let store;
+try { store = await createStore(); }
+catch (err) {
+  document.body.innerHTML = `<div class="overlay"><div class="box login"><h1>Can't connect</h1><p class="err">The sync service didn't load: ${esc(err.message)}. Check your internet connection and the values in config.js, then reload.</p></div></div>`;
+  throw err;
+}
+
+buildUI();
+$("#mode").textContent = store.mode === "cloud" ? "Shared" : "Local only";
+$("#mode").title = store.mode === "cloud" ? "Changes sync to both people" : "Data is saved in this browser only. Add Firebase settings to config.js to share.";
+$("#periodLabel").innerHTML = periodLabel(state.period);
+setTab(state.tab);
+
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target; $("#loginErr").textContent = "";
+  try { await store.signIn(f.email.value.trim(), f.password.value); f.reset(); }
+  catch (err) { $("#loginErr").textContent = "Sign-in failed. Check the email and password."; }
+});
+$("#signout").onclick = () => store.signOut();
+
+store.onAuth(user => {
+  if (store.mode === "cloud" && !user) {
+    stopSync(); $("#app").hidden = true; $("#login").hidden = false; return;
+  }
+  $("#login").hidden = true; $("#app").hidden = false;
+  const email = (user.email || "").toLowerCase();
+  state.me = USER_KEYS.find(k => USERS[k].email.toLowerCase() === email) || null;
+  $("#whoami").textContent = state.me ? USERS[state.me].name : email;
+  $("#signout").hidden = store.mode !== "cloud";
+  setTab(state.me || USER_KEYS[0]);
+  USER_KEYS.forEach(resetExpenseForm);
+  startSync();
+});
+</script>
+</body>
+</html>
